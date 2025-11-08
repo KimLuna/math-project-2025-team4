@@ -64,6 +64,15 @@ def run(addr, port):
     conn.sendall(json.dumps(send_enc).encode("ascii"))
     logging.info(f"[*] Sent encrypted message: {send_enc}")
 
+    # Decrypt Bob's response
+    rbytes = conn.recv(4096)
+    rjs = rbytes.decode("ascii")
+    resp = json.loads(rjs)
+    logging.info(f"[*] Received AES from Bob: {resp}")
+
+    enc_world = resp["encryption"]
+    world = aes_decrypt_b64(key, enc_world)
+    logging.info(f"[*] Decrypted from Bob: {world}")
 
     conn.close()
 

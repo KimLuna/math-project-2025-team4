@@ -4,7 +4,7 @@ import argparse
 import logging
 import json
 
-from dh import find_prime_400_500, find_generator, make_private_key, make_public_key
+from dh import find_prime_400_500, find_generator, make_private_key, make_public_key, make_shared_secret, derive_aes_key
 
 
 def handler(sock):
@@ -32,6 +32,33 @@ def handler(sock):
         sock.sendall(json.dumps(resp).encode("ascii"))
         logging.info(f"[*] Sent DH parameters: {resp}")
 
+    # receive A from alice
+    data = sock.recv(4096)
+    msg = json.loads(data.decode("ascii"))
+    A = msg["public"]
+    logging.info(f"[*] Received A={A}")
+
+    # generate shared secret & AES key
+    s = make_shared_secret(A, b, p)
+    key = derive_aes_key(s)
+    logging.info(f"[*] Shared secret s={s}, AES key len={len(key)}")
+
+    # decrypt alice's AES message
+    data = sock.recv(4096)
+    msg = json.loads(data.decode("ascii"))
+    ciphertext = msg["encryption"]
+    plaintext = aes_decrypt_b64(key, ciphertext)
+    logging.info(f"[*] Decrypted from Alice: {plaintext}")
+
+    # send encrypted response to alice
+    enc_msg = aes_encrypt_b64(key, "world")
+    resp = {
+        "opcode": 2,
+        "type": "AES",
+        "encryption": enc_msg
+    }
+    sock.sendall(json.dumps(resp).encode("ascii"))
+    logging.info(f"[*] Sent encrypted message: {resp}")
     sock.close()
 
 def run(addr, port):

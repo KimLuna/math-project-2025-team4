@@ -67,3 +67,14 @@ def make_private_key(p: int) -> int:
 def make_public_key(g: int, a: int, p: int) -> int:
     """Compute public key A = g^a mod p."""
     return pow(g, a, p)
+
+def make_shared_secret(peer_public: int, my_private: int, p: int) -> int:
+    """Compute shared secret s = peer_public^my_private mod p."""
+    return pow(peer_public, my_private, p)
+
+def derive_aes_key(shared: int) -> bytes:
+    """Derive a 32-byte AES key from the shared secret."""
+    # shared secret -> 2-byte big-endian
+    s_bytes = shared.to_bytes(2, 'big', signed=False)
+    # generate 32-byte key
+    return s_bytes * 16

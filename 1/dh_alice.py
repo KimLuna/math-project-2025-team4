@@ -4,7 +4,7 @@ import logging
 import json
 
 from aes import aes_encrypt_b64, aes_decrypt_b64
-from dh import is_prime, find_prime_400_500, is_generator, make_private_key, make_public_key
+from dh import is_prime, find_prime_400_500, is_generator, make_private_key, make_public_key, make_shared_secret, derive_aes_key
 
 def run(addr, port):
     conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -48,6 +48,21 @@ def run(addr, port):
     }
     conn.sendall(json.dumps(send_msg).encode("ascii"))
     logging.info(f"[*] Sent A: {send_msg}")
+
+    # calculate shared secret
+    s = make_shared_secret(B, a, p)
+    key = derive_aes_key(s)
+    logging.info(f"Derived shared secret and AES key (len={len(key)})")
+
+    # encrypt message & send
+    enc_msg = aes_encrypt_b64(key, "hello")
+    send_enc = {
+        "opcode": 2,
+        "type": "AES",
+        "encryption": enc_msg
+    }
+    conn.sendall(json.dumps(send_enc).encode("ascii"))
+    logging.info(f"[*] Sent encrypted message: {send_enc}")
 
 
     conn.close()

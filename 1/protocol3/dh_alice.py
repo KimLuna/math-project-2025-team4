@@ -27,8 +27,8 @@ def run(addr, port):
     logging.info(f"[*] Received: {resp}")
 
     # message form: {"opcode":1,"type":"DH","public":B,"parameter":{"p":p,"g":g}}
-    p = resp["parameter"]["p"]
-    g = resp["parameter"]["g"]
+    p = resp["parameters"]["p"]
+    g = resp["parameters"]["g"]
     B = resp["public"]
 
     # verify p, q

@@ -3,8 +3,12 @@ import argparse
 import logging
 import json
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from aes import aes_encrypt_b64, aes_decrypt_b64
-from dh import (
+from functions import (
     is_prime,
     find_prime_400_500,
     is_generator,

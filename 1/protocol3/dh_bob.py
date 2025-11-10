@@ -4,7 +4,11 @@ import argparse
 import logging
 import json
 
-from dh import (
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from functions import (
     find_prime_400_500,
     find_generator,
     make_private_key,

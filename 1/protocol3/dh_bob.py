@@ -27,7 +27,7 @@ def handler(sock):
             "opcode": 1,
             "type": "DH",
             "public": B,
-            "parameters": {"p": p, "g": g}
+            "parameter": {"p": p, "g": g}
         }
         sock.sendall(json.dumps(resp).encode("ascii"))
         logging.info(f"[*] Sent DH parameters: {resp}")

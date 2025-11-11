@@ -80,6 +80,15 @@ def handler(conn):
                 else:
                     logging.error(f"[*] No AES message received")
                     break
+            if smsg:
+                sjs = json.dumps(smsg)
+                logging.debug(f"[*] Sending: {sjs}")
+                sbytes = sjs.encode("ascii")
+                conn.send(sbytes)
+                logging.info(f"[*] Sent: {sjs}")
+                break
+            else:
+                logging.debug("[*] No response")
 
     except ConnectionResetError:
         logging.info(f"[*] Connection from Alice{peer_addr} closed")

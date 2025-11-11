@@ -6,6 +6,7 @@ import json
 import random
 import string
 import os
+import base64
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import aes
@@ -38,14 +39,14 @@ def run(addr, port):
     try:
         msg1 = {"opcode": 0, "type": "RSA"}
         send_message(conn, msg1)
-
+        """B: n, e 받고 키 생성"""
         rmsg1 = receive_message(conn)
         if not (rmsg1 and rmsg1.get("opcode") == 1 and rmsg1.get("type") == "RSA"):
             logging.error("[*] Cannnot receive RSA key response.")
             return
 
         bob_public_key = {"n": rmsg1["parameter"]["n"], "e": rmsg1["public"]}
-        logging.info("[*] Received RSA key.")
+        logging.info("[*] B 구간: Received RSA key.")
 
         my_aes_key_str = "".join(random.choices(string.ascii_letters + string.digits, k = 32))
         my_aes_key_byte = my_aes_key_str.encode("utf-8")
@@ -59,6 +60,8 @@ def run(addr, port):
         
         msg2 = {"opcode": 2, "type": "RSA", "encryption": enc_key_list}
         send_message(conn, msg2)
+
+        """C. 받은 메시지 decode"""
 
         enc_hello = aes.aes_encrypt_b64(my_aes_key_byte, "hello")
         msg3 = {"opcode": 2, "type": "AES", "encryption": enc_hello}
@@ -84,7 +87,7 @@ def run(addr, port):
     except ConnectionResetError:
         logging.info(f"[*] Connection from Bob({addr}:{port}) closed")
     except Exception as e:
-        logging.error(f"[*] Error: {e}")
+        logging.error(f"[*] Error: {e}", exc_info = True)
     finally:
         conn.close()
         logging.info(f"[*] Connection from Bob({addr}:{port}) closed")

@@ -27,6 +27,7 @@ def handler(conn):
         rbytes = conn.recv(4096)
         if not rbytes:
             logging.info(f"[*] 구간 0: Connection from Alice{peer_addr} closed")
+            return
         rmsg = json.loads(rbytes.decode("ascii"))
         logging.info(f"[*] Received: {rmsg}")
         if not(rmsg.get("opcode") == 0 and rmsg.get("type") == "RSA"):
@@ -46,6 +47,7 @@ def handler(conn):
         data = conn.recv(4096)
         if not data:
             logging.error("[*] 구간 2: No Key received")
+            return
         rmsg = json.loads(data.decode("ascii"))
 
         if not(rmsg.get("opcode") == 2 and rmsg.get("type") == "RSA"):
@@ -60,9 +62,8 @@ def handler(conn):
         key_chars = []
         for enc_code in enc_key_list:
             dec_code = p2.rsa_decrypt(enc_code, my_private_key["d"], my_private_key["n"])
-            key_chars.append(chr(dec_code))
-        rec_key_str = "".join(key_chars)
-        rec_aes_key = rec_key_str.encode("ascii")
+            key_chars.append(dec_code)
+        rec_aes_key = bytes(key_chars)
         logging.info(f"[*] 구간 2: Encoded to AES (len={len(rec_aes_key)})")
         """2-1. encrypted_key에서 encryption으로 써줘야함"""
         input_msg = input("[*] 구간 2: Bob input: ")
@@ -75,6 +76,7 @@ def handler(conn):
         data = conn.recv(4096)
         if not data:
             logging.error("[*] 구간 3: Invalid Input.")
+            return
         rmsg = json.loads(data.decode("ascii"))
 
         if not(rmsg.get("opcode") == 2 and rmsg.get("type") == "AES"):

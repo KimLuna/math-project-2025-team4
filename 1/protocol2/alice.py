@@ -12,10 +12,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import aes
 
 def send_message(sock, msgdict):
-    sjs = json.dumps(msgdict)
-    sbytes = sjs.encode("ascii")
-    sock.sendall(sbytes)
-    logging.info(f"[*] Sent: {sjs}")
+    sjs = json.dumps(msgdict) 
+    sock.sendall(sjs.encode("ascii"))
 
 def receive_message(sock):
     rbytes = sock.recv(4096)
@@ -24,7 +22,6 @@ def receive_message(sock):
         return None
     rjs = rbytes.decode("ascii")
     rmsg = json.loads(rjs)
-    logging.info(f"[*] Received: {rjs}")
     return rmsg
 
 def run(addr, port):
@@ -39,17 +36,18 @@ def run(addr, port):
     try:
         msg1 = {"opcode": 0, "type": "RSA"}
         send_message(conn, msg1)
+        logging.info("[*] 구간 A: Sent.")
         """B: n, e 받고 키 생성"""
         rmsg1 = receive_message(conn)
         if not (rmsg1 and rmsg1.get("opcode") == 1 and rmsg1.get("type") == "RSA"):
-            logging.error("[*] Cannnot receive RSA key response.")
+            logging.error("[*] B 구간: Cannnot receive RSA key response.")
             return
 
         bob_public_key = {"n": rmsg1["parameter"]["n"], "e": rmsg1["public"]}
-        logging.info("[*] B 구간: Received RSA key.")
+        logging.info(f"[*] B 구간: Received RSA key: {rmsg1}.")
 
         my_aes_key_str = "".join(random.choices(string.ascii_letters + string.digits, k = 32))
-        my_aes_key_byte = my_aes_key_str.encode("utf-8")
+        my_aes_key_byte = my_aes_key_str.encode("ascii")
 
         enc_key_list = []
         n, e = bob_public_key["n"], bob_public_key["e"]
@@ -57,33 +55,37 @@ def run(addr, port):
             char_code = ord(char)
             enc_code = p2.rsa_encrypt(char_code, n, e)
             enc_key_list.append(enc_code)
-        
-        msg2 = {"opcode": 2, "type": "RSA", "encryption": enc_key_list}
+
+        msg2 = {"opcode": 2, "type": "RSA", "encrypted_key": enc_key_list}
         send_message(conn, msg2)
+        logging.info(f"[*] B 구간: Sent (items = {len(enc_key_list)}).")
 
-        """C. 받은 메시지 decode"""
+        """C. 받은 메시지 decode (encryption 써야 키에러 안 남)"""
+        #여기서 bob 구간 2에서 보낸 메시지 받고 decode 해야 할 것 같은데?
+        rmsg22 = receive_message(conn)
 
-        enc_hello = aes.aes_encrypt_b64(my_aes_key_byte, "hello")
-        msg3 = {"opcode": 2, "type": "AES", "encryption": enc_hello}
+        logging.warning(f"[DEBUG] 학교 서버가 보낸 메시지: {rmsg22}")
+
+        if not(rmsg22 and rmsg22.get("opcode") == 2 and rmsg22.get("type") == "AES"):
+            logging.error("[*] C 구간: No AES key received.")
+            return
+        logging.info("[*] C 구간: Received AES key.")
+        enc_message = rmsg22["encryption"]
+
+        try:
+            msg_bob = aes.aes_decrypt_b64(my_aes_key_byte, enc_message)
+            logging.info(f"[*] 구간 C: Decrypted from Bob: {msg_bob}")
+        except Exception as e:
+            logging.error(f"[*] 구간 C: Failed to decrypt: {e}")
+            return
+        
+        user_input = input("[*] 구간 C: Alice input: ")
+        enc_input = aes.aes_encrypt_b64(my_aes_key_byte, user_input)
+        msg3 = {"opcode": 2, "type": "AES", "encryption": enc_input}
         send_message(conn, msg3)
-        logging.info("[*] Sent.")
-
-        rmsg2 = receive_message(conn)
-        if not(rmsg2 and rmsg2.get("opcode") == 2 and rmsg2.get("type") == "AES"):
-            logging.error("[*] No response received")
-            return
-        
-        enc_world = rmsg2.get("encryption")
-        if not enc_world:
-            logging.error("[*] No encryption field in response.")
-            return
-        
-        dec_world = aes.aes_decrypt_b64(my_aes_key_byte, enc_world)
-        if dec_world == "world":
-            logging.info(f"[*] Success.")
-        else:
-            logging.error("[*] Failed.")
-
+        logging.info("[*] C 구간: Sent.")
+    except json.JSONDecodeError:
+        logging.error("[*] Failed to decode JSON (client likely disconnected)")
     except ConnectionResetError:
         logging.info(f"[*] Connection from Bob({addr}:{port}) closed")
     except Exception as e:

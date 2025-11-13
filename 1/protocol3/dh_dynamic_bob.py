@@ -18,7 +18,6 @@ from functions import (
 )
 from aes import aes_encrypt_b64, aes_decrypt_b64
 
-
 def handler(sock):
     # receive request
     rbytes = sock.recv(4096)
@@ -52,7 +51,7 @@ def handler(sock):
         A = msg["public"]
         logging.info(f"[*] Received A={A}")
     except KeyError:
-        logging.error(f"[*] Received invalid message from Allice: {msg}")
+        logging.error(f"[*] Received invalid message from Alice: {msg}")
         sock.close()
         return
 
@@ -61,15 +60,19 @@ def handler(sock):
     key = derive_aes_key(s)
     logging.info(f"[*] Shared secret s={s}, AES key len={len(key)}")
 
-    # decrypt alice's AES message
+    # Decrypt Alice's AES message
     data = sock.recv(4096)
     msg = json.loads(data.decode("ascii"))
     ciphertext = msg["encryption"]
     plaintext = aes_decrypt_b64(key, ciphertext)
     logging.info(f"[*] Decrypted from Alice: {plaintext}")
 
-    # send encrypted response to alice
-    enc_msg = aes_encrypt_b64(key, "World")
+    # Let Bob respond with a message (user input)
+    # Here we will prompt the user to enter the message Bob wants to send back to Alice
+    response_message = input("[*] Enter your response message (e.g. 'world'): ")
+
+    # Encrypt the response message using AES
+    enc_msg = aes_encrypt_b64(key, response_message)
     resp = {"opcode": 2, "type": "AES", "encryption": enc_msg}
     sock.sendall(json.dumps(resp).encode("ascii"))
     logging.info(f"[*] Sent encrypted message: {resp}")

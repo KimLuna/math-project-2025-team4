@@ -72,9 +72,11 @@ def run(addr, port):
     key = derive_aes_key(s)
     logging.info(f"Derived shared secret and AES key (len={len(key)})")
 
+    # **User input for message**
+    message = input("Enter the message to send: ")
+
     # encrypt message & send
-    
-    enc_msg = aes_encrypt_b64(key, "Hello")
+    enc_msg = aes_encrypt_b64(key, message)
     send_enc = {"opcode": 2, "type": "AES", "encryption": enc_msg}
     conn.sendall(json.dumps(send_enc).encode("ascii"))
     logging.info(f"[*] Sent encrypted message: {send_enc}")

@@ -2,12 +2,81 @@ import os
 import sys
 import argparse
 import logging
+import math
+
 
 def training(instances, labels):
-    pass
+    # 데이터를 학습하여 클래스별 평균, 분산, 사전 확률을 계산
+    separated_data = {}
+    for i in range(len(instances)):
+        vector = instances[i][1:]
+        class_val = labels[i]
+
+        if class_val not in separated_data:
+            separated_data[class_val] = []
+        separated_data[class_val].append(vector)
+
+    parameters = {}
+    total_rows = len(instances)
+
+    # 1. 각 클래스별 통계치(평균, 분산, 사전확률) 계산
+    for class_val, rows in separated_data.items():
+        summary = {}
+
+        n_samples = len(rows)  # row 수
+        n_features = len(rows[0])  # feature 수
+
+        # 1-1. 사전 확률 P(Class) 계산
+        summary["prior"] = n_samples / total_rows
+
+        # 1-2. 평균 계산
+        means = []
+        for i in range(n_features):
+            col_values = [row[i] for row in rows]
+            means.append(sum(col_values) / n_samples)
+        summary["mean"] = means
+
+        # 1-3. 분산 계산
+        variances = []
+        for i in range(n_features):
+            col_values = [row[i] for row in rows]
+            mu = means[i]
+            var = sum([(x - mu) ** 2 for x in col_values]) / n_samples
+            variances.append(var + 1e-9)  # 분산이 0이 될 때의 나눗셈 오류 방지
+        summary["var"] = variances
+        parameters[class_val] = summary
+    return parameters
+
 
 def predict(instance, parameters):
-    pass
+    # 학습된 파라미터를 사용하여 테스트 데이터의 클래스를 예측
+    features = instance[1:]
+
+    best_label = None
+    best_prob = -float("inf")
+
+    for class_val, params in parameters.items():
+        probability = math.log(params["prior"])
+
+        means = params["mean"]
+        vars = params["var"]
+
+        for i in range(len(features)):
+            x = features[i]
+            mean = means[i]
+            var = vars[i]
+
+            exponent = -((x - mean) ** 2) / (2 * var)
+            loglikelihood = -0.5 * math.log(2 * math.pi * var) + exponent
+
+            probability += loglikelihood
+
+        if probability > best_prob:
+            best_prob = probability
+            best_label = class_val
+
+    return best_label
+
 
 def report(predictions, answers):
     if len(predictions) != len(answers):
@@ -30,7 +99,8 @@ def report(predictions, answers):
                 tp += 1
             else:
                 fp += 1
-    precision = round(tp / (tp + fp), 2) * 100
+    if (tp + fp) > 0:  # ZeroDivisionError
+        precision = round(tp / (tp + fp), 2) * 100
 
     # recall
     tp = 0
@@ -41,11 +111,14 @@ def report(predictions, answers):
                 tp += 1
             else:
                 fn += 1
-    recall = round(tp / (tp + fn), 2) * 100
+    recall = 0
+    if (tp + fn) > 0:  # ZeroDivisionError
+        recall = round(tp / (tp + fn), 2) * 100
 
     logging.info("accuracy: {}%".format(accuracy))
     logging.info("precision: {}%".format(precision))
     logging.info("recall: {}%".format(recall))
+
 
 def load_raw_data(fname):
     instances = []
@@ -66,6 +139,7 @@ def load_raw_data(fname):
             labels.append(tmp[-1])
     return instances, labels
 
+
 def run(train_file, test_file):
     # training phase
     instances, labels = load_raw_data(train_file)
@@ -84,18 +158,40 @@ def run(train_file, test_file):
             sys.exit(1)
 
         predictions.append(result)
-    
+
     # report
     report(predictions, labels)
 
+
 def command_line_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-t", "--training", required=True, metavar="<file path to the training dataset>", help="File path of the training dataset", default="training.csv")
-    parser.add_argument("-u", "--testing", required=True, metavar="<file path to the testing dataset>", help="File path of the testing dataset", default="testing.csv")
-    parser.add_argument("-l", "--log", help="Log level (DEBUG/INFO/WARNING/ERROR/CRITICAL)", type=str, default="INFO")
+    parser.add_argument(
+        "-t",
+        "--training",
+        required=True,
+        metavar="<file path to the training dataset>",
+        help="File path of the training dataset",
+        default="training.csv",
+    )
+    parser.add_argument(
+        "-u",
+        "--testing",
+        required=True,
+        metavar="<file path to the testing dataset>",
+        help="File path of the testing dataset",
+        default="testing.csv",
+    )
+    parser.add_argument(
+        "-l",
+        "--log",
+        help="Log level (DEBUG/INFO/WARNING/ERROR/CRITICAL)",
+        type=str,
+        default="INFO",
+    )
 
     args = parser.parse_args()
     return args
+
 
 def main():
     args = command_line_args()
@@ -110,6 +206,7 @@ def main():
         sys.exit(1)
 
     run(args.training, args.testing)
+
 
 if __name__ == "__main__":
     main()

@@ -47,6 +47,17 @@ def training(instances, labels):
             mu = means[i]
             var = sum([(x - mu) ** 2 for x in col_values]) / n_samples
             variances.append(var + 1e-9)  # 분산이 0이 될 때의 나눗셈 오류 방지
+            # -> accuracy: 94%, precision: 70%, recall: 89%
+            # variances.append(var + 1e-2)
+            # -> accuracy: 94%, precision: 70%, recall: 89%
+            # variances.append(var + 1e-4)
+            # -> accuracy: 94%, precision: 70%, recall: 89%
+            # variances.append(var + 1e-6)
+            # -> accuracy: 94%, precision: 70%, recall: 89%
+            # variances.append(var + 1e-8)
+            # -> accuracy: 94%, precision: 70%, recall: 89%
+            # variances.append(var + 1e-10)
+            # -> accuracy: 94%, precision: 70%, recall: 89%
         summary["var"] = variances
         parameters[class_val] = summary
     return parameters
@@ -238,11 +249,13 @@ def main():
     logging.basicConfig(level=args.log)
 
     if not os.path.exists(args.training):
-        logging.error("The training dataset does not exist: {}".format(args.training))
+        logging.error(
+            "The training dataset does not exist: {}".format(args.training))
         sys.exit(1)
 
     if not os.path.exists(args.testing):
-        logging.error("The testing dataset does not exist: {}".format(args.testing))
+        logging.error(
+            "The testing dataset does not exist: {}".format(args.testing))
         sys.exit(1)
 
     run(args.training, args.testing)

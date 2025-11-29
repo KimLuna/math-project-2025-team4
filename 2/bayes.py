@@ -4,6 +4,10 @@ import argparse
 import logging
 import math
 
+# Additional Task용 라이브러리
+import numpy as np
+import pandas as pd
+
 
 def training(instances, labels):
     # 데이터를 학습하여 클래스별 평균, 분산, 사전 확률을 계산
@@ -139,8 +143,25 @@ def load_raw_data(fname):
             labels.append(tmp[-1])
     return instances, labels
 
+def select_features(instances, threshold = 0.9):
+    # 특성 선택 자동화 함수: 상관계수 높은 특성 찾기
+    df = pd.DataFrame(instances)
+    features = df.iloc[:, 1:].astype(float)
+
+    corr_matrix = features.corr().abs()
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k = 1).astype(bool))
+
+    column_drop = [column for column in upper.columns if any(upper[column] > threshold)]
+    column_keep = [0] + [c for c in features.columns if c not in column_drop]
+
+    return column_keep
+
+def data_filtering(instances, indices):
+    # 선택된 인덱스 데이터만 남기기
+    return [[row[i] for i in indices] for row in instances]
 
 def run(train_file, test_file):
+    print("Feature Set 1: Baseline (모든 특성)")
     # training phase
     instances, labels = load_raw_data(train_file)
     logging.debug("instances: {}".format(instances))
@@ -161,6 +182,25 @@ def run(train_file, test_file):
 
     # report
     report(predictions, labels)
+
+    # Feature Engineering & Parameter tuning
+    print("Feature Set 2: 상관계수를 통한 Feature Selection 자동화")
+    train_instances, train_labels = load_raw_data(train_file)
+    test_instances, test_labels = load_raw_data(test_file)
+
+    selected_idx = select_features(train_instances, threshold = 0.9)
+    print(f"Selected Feature: {selected_idx}")
+
+    train_set2 = data_filtering(train_instances, selected_idx)
+    test_set2 = data_filtering(test_instances, selected_idx)
+
+    params_set2 = training(train_set2, train_labels)
+    predictions_set2 = []
+    for instance in test_set2:
+        result = predict(instance, params_set2)
+        predictions_set2.append(result)
+
+    report(predictions_set2, test_labels)
 
 
 def command_line_args():

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 
-def training(instances, labels):
+def training(instances, labels, epsilon=1e-9):
     # 데이터를 학습하여 클래스별 평균, 분산, 사전 확률을 계산
     separated_data = {}
     for i in range(len(instances)):
@@ -46,7 +46,7 @@ def training(instances, labels):
             col_values = [row[i] for row in rows]
             mu = means[i]
             var = sum([(x - mu) ** 2 for x in col_values]) / n_samples
-            variances.append(var + 1e-9)  # 분산이 0이 될 때의 나눗셈 오류 방지
+            variances.append(var + epsilon)  # 분산이 0이 될 때의 나눗셈 오류 방지
             # -> accuracy: 94%, precision: 70%, recall: 89%
             # variances.append(var + 1e-2)
             # -> accuracy: 94%, precision: 70%, recall: 89%

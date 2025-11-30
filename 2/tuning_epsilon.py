@@ -1,11 +1,7 @@
-import os
 import logging
 import math
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-
-from bayes import load_raw_data, training, predict, select_features, data_filtering
+from bayes import load_raw_data, predict, select_features, data_filtering, training
 
 
 def evaluate(predictions, answers):
@@ -26,44 +22,45 @@ def evaluate(predictions, answers):
 
     return accuracy, precision, recall
 
-# threshold tuning & figure generate
-def threshold_tuning(train_file, test_file):
+# epsilon tuning & figure generate
+def epsilon_tuning(train_file, test_file):
     train_instances, train_labels = load_raw_data(train_file)
     test_instances, test_labels = load_raw_data(test_file)
 
-    threshold_vals = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
+    epsilon_vals = [1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-1, 1, 10]
     accuracy_list, precision_list, recall_list = [], [], []
 
-    for threshold in threshold_vals:
-        # 중요 feature만 남김 & 남은 feature만으로 데이터셋 구성 및 학습
-        selected_idx = select_features(train_instances, threshold)
-        train_filtered = data_filtering(train_instances, selected_idx)
-        test_filtered = data_filtering(test_instances, selected_idx)
+    selected_idx = select_features(train_instances, threshold=0.9)
+    train_filtered = data_filtering(train_instances, selected_idx)
+    test_filtered = data_filtering(test_instances, selected_idx)
 
-        params = training(train_filtered, train_labels)
-        preds = [predict(x, params) for x in test_filtered]
+    for epsilon in epsilon_vals:
+        params = training(train_filtered, train_labels, epsilon=epsilon)
+        predictions = [predict(x, params) for x in test_filtered]
+        acc, prec, rec = evaluate(predictions, test_labels)
 
-        acc, prec, rec = evaluate(preds, test_labels)
         accuracy_list.append(acc)
         precision_list.append(prec)
         recall_list.append(rec)
 
-        print(f"Threshold {threshold:.2f} -> Accuracy: {acc}%, Precision: {prec}%, Recall: {rec}%")
+        print(f"epsilon {epsilon:.0e} -> Accuracy: {acc}%, Precision: {prec}%, Recall: {rec}%")
 
-    # 그래프 출력
+    # 시각화
     plt.figure(figsize=(8, 6))
-    plt.plot(threshold_vals, accuracy_list, marker='o', label='Accuracy')
-    plt.plot(threshold_vals, precision_list, marker='s', label='Precision')
-    plt.plot(threshold_vals, recall_list, marker='^', label='Recall')
+    plt.plot(epsilon_vals, accuracy_list, marker='o', label='Accuracy')
+    plt.plot(epsilon_vals, precision_list, marker='s', label='Precision')
+    plt.plot(epsilon_vals, recall_list, marker='^', label='Recall')
 
-    plt.xlabel('Feature Selection Threshold')
+    plt.xscale('log')
+    plt.xlabel('epsilon (variance smoothing)')
     plt.ylabel('Performance (%)')
-    plt.title('Naive Bayes Performance vs Correlation Threshold')
+    plt.title('Naive Bayes Performance vs epsilon')
     plt.legend()
     plt.grid(True)
-    plt.savefig("threshold_tuning_graph.png", dpi=300)
+    plt.savefig("epsilon_tuning_graph.png", dpi=300)
     plt.show()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    threshold_tuning("training.csv", "testing.csv")
+    epsilon_tuning("training.csv", "testing.csv")

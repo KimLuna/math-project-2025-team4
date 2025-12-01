@@ -5,19 +5,17 @@ from bayes import load_raw_data, predict, select_features, data_filtering, train
 
 
 def evaluate(predictions, answers):
+    # predictions과 answer을 비교해서 성능 평가
+    # 정확도: 전체 중 맞춘 비율
     correct = sum([predictions[i] == answers[i] for i in range(len(predictions))])
     accuracy = round(correct / len(answers), 2) * 100
 
-    # predictions과 answer을 비교해서 성능 평가
-
-    # 정확도: 전체 중 맞춘 비율
     tp = sum([(predictions[i] == 1 and answers[i] == 1) for i in range(len(answers))])
-    # 정밀도: 1이라고 예측한 것 중 실제로 1인 비율
     fp = sum([(predictions[i] == 1 and answers[i] == 0) for i in range(len(answers))])
-    # 재현율: 실제로 1인 것 중에 올바르게 예측한 비율
     fn = sum([(predictions[i] == 0 and answers[i] == 1) for i in range(len(answers))])
-
+    # 정밀도: 1이라고 예측한 것 중 실제로 1인 비율
     precision = round(tp / (tp + fp), 2) * 100 if (tp + fp) > 0 else 0
+    # 재현율: 실제로 1인 것 중에 올바르게 예측한 비율
     recall = round(tp / (tp + fn), 2) * 100 if (tp + fn) > 0 else 0
 
     return accuracy, precision, recall
@@ -30,7 +28,7 @@ def epsilon_tuning(train_file, test_file):
     epsilon_vals = [1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-1, 1, 10]
     accuracy_list, precision_list, recall_list = [], [], []
 
-    selected_idx = select_features(train_instances, threshold=0.9)
+    selected_idx = select_features(train_instances, threshold=0.8)
     train_filtered = data_filtering(train_instances, selected_idx)
     test_filtered = data_filtering(test_instances, selected_idx)
 

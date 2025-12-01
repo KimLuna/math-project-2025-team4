@@ -58,8 +58,6 @@ def find_generator(p: int) -> int:
         if is_generator(g, p):
             return g
 
-import random
-
 def make_private_key(p: int) -> int:
     """Generate a random private key for DH (2 <= a <= p-2)."""
     return random.randint(2, p - 2)
